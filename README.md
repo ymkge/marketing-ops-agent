@@ -10,7 +10,7 @@ LLM（Google AI Studio / Gemini、Claude、GPT-4o）やワークフロー自動�
 | モジュール / テーマ | 概要 | ステータス |
 | :--- | :--- | :---: |
 | **01. 提案スライド自動生成 (`01_proposal_generator`)** | 企画メモから5枚構成のPowerPoint（`.pptx`）スライド自動生成（Gemini無料API対応） | ✅ **実装完了** (v0.2.0) |
-| **02. レポート自動化 (`02_report_automation`)** | 広告・アナリティクス実績データの自動集計・インサイト考察 | 📋 設計中 / 次期着手 |
+| **02. レポート自動化 (`02_report_automation`)** | 広告実績データの自動集計・要因分析・定例レポート（MD/HTML）出力（Gemini無料API対応） | ✅ **実装完了** (v0.1.0) |
 | **03. クリエイティブ生成パイプライン (`03_creative_pipeline`)** | 広告コピー量産・画像生成API連携・n8nワークフロー | 📋 設計中 / 次期着手 |
 | **開発ワークフロー規約 (`.agents/`)** | 計画書承認・自動テスト・内部レビュー・ウォークスルー規約 | ✅ **運用中** |
 
@@ -42,8 +42,20 @@ marketing-ops-agent/
 │   ├── tests/
 │   │   └── test_proposal_generator.py # 自動テストスイート (Pytest 9件)
 │   └── outputs/                   # 生成されたスライド成果物 (.pptx)
-├── 02_report_automation/          # [Module 2] レポート自動化 (準備中)
-│   └── README.md
+├── 02_report_automation/          # [Module 2] レポート自動化 (実装完了)
+│   ├── README.md                  # モジュール詳細ドキュメント
+│   ├── samples/
+│   │   └── sample_ad_performance.csv # テスト用配信実績データ (Google/Meta等)
+│   ├── src/
+│   │   ├── models.py              # Pydanticデータモデル (AggregatedData, InsightAnalysis等)
+│   │   ├── data_processor.py      # pandas加重平均集計・ゼロ除算ガード
+│   │   ├── insight_analyzer.py    # Gemini API Structured Outputs分析・動的モック
+│   │   └── report_builder.py      # Markdown & 自己完結型HTML出力ビルダー
+│   ├── scripts/
+│   │   └── generate_report.py     # CLI実行エントリーポイント
+│   ├── tests/
+│   │   └── test_report_automation.py # 自動テストスイート (Pytest 11件)
+│   └── outputs/                   # 生成されたレポート成果物 (.md / .html)
 └── 03_creative_pipeline/          # [Module 3] クリエイティブ生成パイプライン (準備中)
     └── README.md
 ```
@@ -124,26 +136,52 @@ python 01_proposal_generator/scripts/generate_slides.py \
   --input 01_proposal_generator/samples/sample_brief.json \
   --output 01_proposal_generator/outputs/sample_proposal.pptx \
   --provider gemini \
-  --model gemini-2.0-flash
+  --model gemini-flash-latest
+```
+
+---
+
+## 🎯 実装済みモジュール紹介: `02_report_automation`
+
+広告媒体（Google広告、Meta広告等）の配信実績データ（CSV/JSON）を集計・クレンジングし、Gemini API による要因分析・改善インサイトを付与した定例レポート（Markdown / 自己完結型HTML）を自動出力します。
+
+### 主な特長
+- **加重平均による決定論的KPI集計**: 単純平均ではなく合算後の除算（$\sum \text{clicks} / \sum \text{imp}$ 等）で正確な数値を算出。ゼロ除算・欠損値も完全保護。
+- **Gemini Structured Outputs によるインサイト生成**: 全体総括、媒体別評価（good/warning/neutral）、顕著な傾向、優先度付きネクストアクションを構造化して出力。
+- **実務で使える2系統レポート出力**:
+  - `Markdown`: チャット・社内wiki共有用
+  - `HTML`: インラインCSS、KPIカード、CSS横棒グラフ、印刷/PDF保存対応のダッシュボード画面
+
+### 実行方法
+
+```bash
+# 基本実行 (Markdown & HTML の両方を出力)
+python 02_report_automation/scripts/generate_report.py \
+  --input 02_report_automation/samples/sample_ad_performance.csv \
+  --output 02_report_automation/outputs/weekly_report
+
+# Gemini API を明示指定して実行
+python 02_report_automation/scripts/generate_report.py \
+  --input 02_report_automation/samples/sample_ad_performance.csv \
+  --output 02_report_automation/outputs/weekly_report \
+  --provider gemini \
+  --model gemini-flash-latest
 ```
 
 ---
 
 ## 🧪 自動テストの実行
 
-本プロジェクトではデグレ防止のため、ユニットテストおよびCLIエンドツーエンドテストを整備しています。
+本プロジェクトではデグレ防止のため、各モジュールのユニットテストおよびCLIエンドツーエンドテストを整備しています（全20テスト合格）。
 
 ```bash
-# 全自動テストの実行
-pytest 01_proposal_generator/tests/ -v
-```
+# 全モジュールの自動テストを一括実行
+pytest 01_proposal_generator/tests/ 02_report_automation/tests/ -v
 
-**テスト項目一覧**:
-- `test_brief_model_validation`: 企画メモ入力モデルのバリデーション検証
-- `test_mock_deck_generation`: 5枚構成スライドモデルの整合性検証
-- `test_pptx_builder_creates_valid_deck`: 16:9比率、破損のないPPTX生成、テキスト描画検証
-- `test_cli_execution_with_mock`: CLIコマンドの正常系E2E実行テスト
-- `test_cli_execution_with_invalid_input`: 異常系（存在しないファイルパス等）のエラーハンドリング検証
+# モジュール個別実行
+pytest 01_proposal_generator/tests/ -v
+pytest 02_report_automation/tests/ -v
+```
 
 ---
 

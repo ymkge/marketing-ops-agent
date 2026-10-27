@@ -1,0 +1,1 @@
+"""Report automation package."""

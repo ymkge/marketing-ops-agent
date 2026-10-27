@@ -192,8 +192,28 @@ def generate_mock_deck(brief: BriefInput) -> ProposalDeck:
     )
 
 
-def generate_deck_with_anthropic(brief: BriefInput, model_name: str = "claude-3-5-sonnet-20241022") -> ProposalDeck:
+DEFAULT_GEMINI_MODEL = "gemini-flash-latest"
+DEFAULT_ANTHROPIC_MODEL = "claude-sonnet-latest"
+DEFAULT_OPENAI_MODEL = "gpt-4-turbo"
+
+
+def resolve_model(provider: str, model_name: Optional[str] = None) -> str:
+    """指定引数、環境変数、汎用デフォルトエイリアスの順でモデル名を解決"""
+    if model_name:
+        return model_name
+    p = provider.lower()
+    if p == "gemini":
+        return os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
+    elif p == "anthropic":
+        return os.getenv("ANTHROPIC_MODEL") or DEFAULT_ANTHROPIC_MODEL
+    elif p == "openai":
+        return os.getenv("OPENAI_MODEL") or DEFAULT_OPENAI_MODEL
+    return ""
+
+
+def generate_deck_with_anthropic(brief: BriefInput, model_name: Optional[str] = None) -> ProposalDeck:
     """Anthropic API を呼び出して ProposalDeck を生成"""
+    resolved_model = resolve_model("anthropic", model_name)
     try:
         import anthropic
     except ImportError:
@@ -225,7 +245,7 @@ def generate_deck_with_anthropic(brief: BriefInput, model_name: str = "claude-3-
 """
 
     response = client.messages.create(
-        model=model_name,
+        model=resolved_model,
         max_tokens=4096,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
@@ -243,8 +263,9 @@ def generate_deck_with_anthropic(brief: BriefInput, model_name: str = "claude-3-
     return ProposalDeck.model_validate(deck_dict)
 
 
-def generate_deck_with_openai(brief: BriefInput, model_name: str = "gpt-4o") -> ProposalDeck:
+def generate_deck_with_openai(brief: BriefInput, model_name: Optional[str] = None) -> ProposalDeck:
     """OpenAI API を呼び出して ProposalDeck を生成"""
+    resolved_model = resolve_model("openai", model_name)
     try:
         from openai import OpenAI
     except ImportError:
@@ -258,7 +279,7 @@ def generate_deck_with_openai(brief: BriefInput, model_name: str = "gpt-4o") -> 
     
     # Structured Outputs (beta.chat.completions.parse)
     completion = client.beta.chat.completions.parse(
-        model=model_name,
+        model=resolved_model,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -273,8 +294,9 @@ def generate_deck_with_openai(brief: BriefInput, model_name: str = "gpt-4o") -> 
     return completion.choices[0].message.parsed
 
 
-def generate_deck_with_gemini(brief: BriefInput, model_name: str = "gemini-2.0-flash") -> ProposalDeck:
+def generate_deck_with_gemini(brief: BriefInput, model_name: Optional[str] = None) -> ProposalDeck:
     """Google GenAI SDK (Gemini API) を呼び出して ProposalDeck を生成"""
+    resolved_model = resolve_model("gemini", model_name)
     try:
         from google import genai
         from google.genai import types
@@ -293,20 +315,36 @@ def generate_deck_with_gemini(brief: BriefInput, model_name: str = "gemini-2.0-f
 {brief.model_dump_json(indent=2)}
 """
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            response_schema=ProposalDeck,
-            temperature=0.7,
-        )
-    )
+    models_to_try = [resolved_model]
+    alt_model = "gemini-flash-lite-latest" if resolved_model != "gemini-flash-lite-latest" else "gemini-flash-latest"
+    if alt_model not in models_to_try:
+        models_to_try.append(alt_model)
 
-    response_text = response.text.strip()
-    deck_dict = json.loads(response_text)
-    return ProposalDeck.model_validate(deck_dict)
+    last_error = None
+    for target_model in models_to_try:
+        try:
+            response = client.models.generate_content(
+                model=target_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                    response_schema=ProposalDeck,
+                    temperature=0.7,
+                )
+            )
+            response_text = response.text.strip()
+            deck_dict = json.loads(response_text)
+            return ProposalDeck.model_validate(deck_dict)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                logger.warning("モデル %s が高負荷(503)のため、フェイルオーバーを試行します: %s", target_model, e)
+                continue
+            raise e
+
+    if last_error:
+        raise last_error
 
 
 def generate_proposal_deck(
@@ -325,33 +363,33 @@ def generate_proposal_deck(
     
     # プロバイダーが明示されている場合
     if provider_key == "gemini":
-        return generate_deck_with_gemini(brief, model_name or "gemini-2.0-flash")
+        return generate_deck_with_gemini(brief, model_name)
     elif provider_key == "anthropic":
-        return generate_deck_with_anthropic(brief, model_name or "claude-3-5-sonnet-20241022")
+        return generate_deck_with_anthropic(brief, model_name)
     elif provider_key == "openai":
-        return generate_deck_with_openai(brief, model_name or "gpt-4o")
+        return generate_deck_with_openai(brief, model_name)
     
     # auto の場合: 優先順位 Gemini -> Anthropic -> OpenAI -> Mock
-    # auto モード時は、プロバイダー間のモデル名衝突を防ぐため個別デフォルトを利用
     gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
     anthropic_key = os.getenv("ANTHROPIC_API_KEY")
     openai_key = os.getenv("OPENAI_API_KEY")
 
     if gemini_key:
         try:
-            return generate_deck_with_gemini(brief, model_name or "gemini-2.0-flash")
+            return generate_deck_with_gemini(brief, model_name)
         except Exception as e:
             logger.warning("Gemini APIの呼び出しに失敗しました (%s)。他プロバイダーまたはモックへフォールバックします。", e)
 
+    # フォールバック先には model_name を引き継がない（特定プロバイダー用モデル名の誤伝播を防ぐ）
     if anthropic_key:
         try:
-            return generate_deck_with_anthropic(brief, "claude-3-5-sonnet-20241022")
+            return generate_deck_with_anthropic(brief, None)
         except Exception as e:
             logger.warning("Anthropic APIの呼び出しに失敗しました (%s)。OpenAIまたはモックへフォールバックします。", e)
     
     if openai_key:
         try:
-            return generate_deck_with_openai(brief, "gpt-4o")
+            return generate_deck_with_openai(brief, None)
         except Exception as e:
             logger.warning("OpenAI APIの呼び出しに失敗しました (%s)。モック生成へフォールバックします。", e)
             

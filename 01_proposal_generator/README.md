@@ -72,7 +72,7 @@ python 01_proposal_generator/scripts/generate_slides.py \
   --input 01_proposal_generator/samples/sample_brief.json \
   --output 01_proposal_generator/outputs/sample_proposal.pptx \
   --provider gemini \
-  --model gemini-2.0-flash
+  --model gemini-flash-latest
 ```
 
 #### CLI オプション一覧
@@ -81,4 +81,4 @@ python 01_proposal_generator/scripts/generate_slides.py \
 | `--input` | `-i` | `samples/sample_brief.json` | 入力ブリーフファイルのパス（JSONまたはMarkdown） |
 | `--output` | `-o` | `outputs/sample_proposal.pptx` | 出力先PPTXファイルのパス |
 | `--provider`| `-p` | `auto` | LLMプロバイダー (`auto`, `gemini`, `anthropic`, `openai`, `mock`) |
-| `--model` | `-m` | 各プロバイダーデフォルト | 使用するモデル名（例: `gemini-2.0-flash`, `claude-3-5-sonnet-20241022`, `gpt-4o`） |
+| `--model` | `-m` | 環境変数または最新汎用エイリアス | 使用するモデル名（未指定時は環境変数または `gemini-flash-latest`, `claude-sonnet-latest`, `gpt-4-turbo`） |
