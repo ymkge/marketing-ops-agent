@@ -273,7 +273,7 @@ def generate_deck_with_openai(brief: BriefInput, model_name: str = "gpt-4o") -> 
     return completion.choices[0].message.parsed
 
 
-def generate_deck_with_gemini(brief: BriefInput, model_name: str = "gemini-2.0-flash") -> ProposalDeck:
+def generate_deck_with_gemini(brief: BriefInput, model_name: str = "gemini-3.8-flash") -> ProposalDeck:
     """Google GenAI SDK (Gemini API) を呼び出して ProposalDeck を生成"""
     try:
         from google import genai
@@ -325,7 +325,7 @@ def generate_proposal_deck(
     
     # プロバイダーが明示されている場合
     if provider_key == "gemini":
-        return generate_deck_with_gemini(brief, model_name or "gemini-2.0-flash")
+        return generate_deck_with_gemini(brief, model_name or "gemini-3.8-flash")
     elif provider_key == "anthropic":
         return generate_deck_with_anthropic(brief, model_name or "claude-3-5-sonnet-20241022")
     elif provider_key == "openai":
@@ -339,7 +339,7 @@ def generate_proposal_deck(
 
     if gemini_key:
         try:
-            return generate_deck_with_gemini(brief, model_name or "gemini-2.0-flash")
+            return generate_deck_with_gemini(brief, model_name or "gemini-3.8-flash")
         except Exception as e:
             logger.warning("Gemini APIの呼び出しに失敗しました (%s)。他プロバイダーまたはモックへフォールバックします。", e)
 

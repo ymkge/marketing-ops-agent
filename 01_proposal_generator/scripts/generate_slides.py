@@ -45,7 +45,7 @@ def parse_args():
         "--model", "-m",
         type=str,
         default=None,
-        help="使用するモデル名（例: gemini-2.0-flash, claude-3-5-sonnet-20241022, gpt-4o など）"
+        help="使用するモデル名（例: gemini-3.8-flash, claude-3-5-sonnet-20241022, gpt-4o など）"
     )
     return parser.parse_args()
 

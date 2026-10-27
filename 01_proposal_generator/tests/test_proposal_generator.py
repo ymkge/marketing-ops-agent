@@ -8,13 +8,17 @@ from pathlib import Path
 import pytest
 from pptx import Presentation
 
-# 01_proposal_generator ディレクトリを sys.path に追加
+# 01_proposal_generator ディレクトリを sys.path に追加し、モジュールキャッシュ衝突を防止
 module_dir = Path(__file__).resolve().parent.parent
 if str(module_dir) not in sys.path:
     sys.path.insert(0, str(module_dir))
 
+for mod in list(sys.modules.keys()):
+    if mod == "src" or mod.startswith("src."):
+        del sys.modules[mod]
+
 from src.models import BriefInput, ProposalDeck, SlideContent, ContentBlock
-from src.llm_client import generate_mock_deck
+from src.llm_client import generate_mock_deck, generate_deck_with_gemini, generate_proposal_deck
 from src.pptx_builder import ProposalPptxBuilder
 
 
@@ -132,7 +136,6 @@ def test_cli_execution_with_invalid_input():
 def test_gemini_client_with_mocked_api(sample_brief, monkeypatch):
     """Gemini API をモックして ProposalDeck が生成されることを検証"""
     from unittest.mock import MagicMock
-    from src.llm_client import generate_deck_with_gemini
 
     monkeypatch.setenv("GEMINI_API_KEY", "dummy_gemini_api_key")
 
@@ -153,8 +156,6 @@ def test_gemini_client_with_mocked_api(sample_brief, monkeypatch):
 
 def test_gemini_missing_api_key(sample_brief, monkeypatch):
     """APIキー未設定時に generate_deck_with_gemini が ValueError を発生させることを検証"""
-    from src.llm_client import generate_deck_with_gemini
-
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
 
@@ -164,16 +165,12 @@ def test_gemini_missing_api_key(sample_brief, monkeypatch):
 
 def test_unsupported_provider_raises_value_error(sample_brief):
     """未対応のプロバイダー指定時に ValueError が発生することを検証"""
-    from src.llm_client import generate_proposal_deck
-
     with pytest.raises(ValueError, match="未対応のプロバイダー"):
         generate_proposal_deck(sample_brief, provider="invalid_llm")
 
 
 def test_auto_provider_fallback_to_mock(sample_brief, monkeypatch):
     """APIキーがない場合でも auto モードでモック生成へフォールバックすることを検証"""
-    from src.llm_client import generate_proposal_deck
-
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
