@@ -69,7 +69,7 @@ python 02_report_automation/scripts/generate_report.py \
   --input 02_report_automation/samples/sample_ad_performance.csv \
   --output 02_report_automation/outputs/weekly_report \
   --provider gemini \
-  --model gemini-3.8-flash
+  --model gemini-flash-latest
 ```
 
 #### CLI オプション一覧
@@ -79,5 +79,5 @@ python 02_report_automation/scripts/generate_report.py \
 | `--output` | `-o` | `outputs/weekly_report` | 出力ファイルパス（ベース名） |
 | `--format` | `-f` | `both` | 出力形式 (`markdown`, `html`, `both`) |
 | `--provider`| `-p` | `auto` | LLMプロバイダー (`auto`, `gemini`, `mock`) |
-| `--model` | `-m` | `gemini-3.8-flash` | Gemini モデル名 |
+| `--model` | `-m` | `gemini-flash-latest` | Gemini モデル名（未指定時は環境変数 GEMINI_MODEL または gemini-flash-latest） |
 | `--title` | `-t` | `週次マーケティング広告成果分析レポート` | レポートタイトル |

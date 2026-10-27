@@ -20,7 +20,7 @@ for mod in list(sys.modules.keys()):
         del sys.modules[mod]
 
 from src.data_processor import DataProcessor, calculate_metrics, _safe_div
-from src.insight_analyzer import generate_mock_insights, generate_insights, generate_insights_with_gemini
+from src.insight_analyzer import generate_mock_insights, generate_insights, generate_insights_with_gemini, resolve_model
 from src.models import AggregatedData, MarketingReport, InsightAnalysis
 from src.report_builder import ReportBuilder
 
@@ -212,3 +212,56 @@ def test_cli_execution_with_mock(sample_csv_path):
         assert os.path.exists(f"{out_base}.md")
         assert os.path.exists(f"{out_base}.html")
         assert os.path.getsize(f"{out_base}.html") > 0
+
+
+def test_resolve_model_empty_env(monkeypatch):
+    """環境変数が空文字の場合でもデフォルト値が採用されることを検証"""
+    monkeypatch.setenv("GEMINI_MODEL", "")
+    assert resolve_model(None) == "gemini-flash-latest"
+    monkeypatch.setenv("GEMINI_MODEL", "custom-model")
+    assert resolve_model(None) == "custom-model"
+    assert resolve_model("override-model") == "override-model"
+
+
+def test_gemini_503_failover(monkeypatch, sample_csv_path):
+    """Gemini APIで503高負荷が発生した際に、代替モデルへ自動フェイルオーバーすることを検証"""
+    processor = DataProcessor(sample_csv_path)
+    agg_data = processor.process()
+
+    class FakeClient:
+        def __init__(self):
+            self.models = self
+            self.calls = []
+
+        def generate_content(self, model, contents, config):
+            self.calls.append(model)
+            if model == "gemini-flash-latest":
+                raise Exception("503 UNAVAILABLE: Model is experiencing high demand")
+            
+            # 2回目の試行で成功するフェイクレスポンス
+            class FakeResponse:
+                text = json.dumps({
+                    "executive_summary": "フェイルオーバー後のサマリー",
+                    "channel_evaluations": [],
+                    "key_findings": ["Finding 1"],
+                    "action_items": []
+                })
+            return FakeResponse()
+
+    fake_client = FakeClient()
+
+    class FakeGenAIModule:
+        Client = lambda **kwargs: fake_client
+        types = type("types", (), {
+            "GenerateContentConfig": lambda **kwargs: kwargs
+        })
+
+    monkeypatch.setattr("src.insight_analyzer.resolve_model", lambda m: "gemini-flash-latest")
+    monkeypatch.setenv("GEMINI_API_KEY", "test_key")
+    monkeypatch.setitem(sys.modules, "google", type("google", (), {}))
+    monkeypatch.setitem(sys.modules, "google.genai", FakeGenAIModule)
+    monkeypatch.setitem(sys.modules, "google.genai.types", FakeGenAIModule.types)
+
+    insights = generate_insights_with_gemini(agg_data, model_name=None)
+    assert insights.executive_summary == "フェイルオーバー後のサマリー"
+    assert fake_client.calls == ["gemini-flash-latest", "gemini-flash-lite-latest"]

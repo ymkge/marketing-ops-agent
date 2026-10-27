@@ -136,7 +136,7 @@ python 01_proposal_generator/scripts/generate_slides.py \
   --input 01_proposal_generator/samples/sample_brief.json \
   --output 01_proposal_generator/outputs/sample_proposal.pptx \
   --provider gemini \
-  --model gemini-3.8-flash
+  --model gemini-flash-latest
 ```
 
 ---
@@ -165,7 +165,7 @@ python 02_report_automation/scripts/generate_report.py \
   --input 02_report_automation/samples/sample_ad_performance.csv \
   --output 02_report_automation/outputs/weekly_report \
   --provider gemini \
-  --model gemini-3.8-flash
+  --model gemini-flash-latest
 ```
 
 ---

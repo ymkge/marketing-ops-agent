@@ -52,8 +52,8 @@ def parse_args():
     parser.add_argument(
         "--model", "-m",
         type=str,
-        default="gemini-3.8-flash",
-        help="Gemini モデル名 (デフォルト: gemini-3.8-flash)"
+        default=None,
+        help="Gemini モデル名 (未指定時は環境変数 GEMINI_MODEL または最新汎用エイリアス: gemini-flash-latest, gemini-flash-lite-latest)"
     )
     parser.add_argument(
         "--title", "-t",
@@ -84,7 +84,7 @@ def main():
     print(f"📄 入力データ  : {args.input}")
     print(f"📁 出力先ベース: {args.output}")
     print(f"🎨 出力フォーマット: {args.format}")
-    print(f"🤖 LLMモード   : {args.provider} ({args.model})")
+    print(f"🤖 LLMモード   : {args.provider} ({args.model or 'auto-resolve'})")
 
     # 1. データ集計 (pandas)
     try:

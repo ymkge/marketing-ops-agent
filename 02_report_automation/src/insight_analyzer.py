@@ -138,11 +138,22 @@ def generate_mock_insights(data: AggregatedData) -> InsightAnalysis:
     )
 
 
+DEFAULT_GEMINI_MODEL = "gemini-flash-latest"
+
+
+def resolve_model(model_name: Optional[str] = None) -> str:
+    """指定引数、環境変数、汎用デフォルトエイリアスの順でモデル名を解決"""
+    if model_name:
+        return model_name
+    return os.getenv("GEMINI_MODEL") or DEFAULT_GEMINI_MODEL
+
+
 def generate_insights_with_gemini(
     data: AggregatedData,
-    model_name: str = "gemini-3.8-flash"
+    model_name: Optional[str] = None
 ) -> InsightAnalysis:
     """Google GenAI SDK (Gemini API) による構造化インサイト生成"""
+    resolved_model = resolve_model(model_name)
     try:
         from google import genai
         from google.genai import types
@@ -158,20 +169,37 @@ def generate_insights_with_gemini(
     summary_text = _build_summary_prompt(data)
     prompt = f"以下の広告配信集計データから、InsightAnalysisスキーマに準拠した要因分析・考察を作成してください:\n\n{summary_text}"
 
-    response = client.models.generate_content(
-        model=model_name,
-        contents=prompt,
-        config=types.GenerateContentConfig(
-            system_instruction=SYSTEM_PROMPT,
-            response_mime_type="application/json",
-            response_schema=InsightAnalysis,
-            temperature=0.7,
-        )
-    )
+    # 混雑時（503）のフェイルオーバー候補
+    models_to_try = [resolved_model]
+    alt_model = "gemini-flash-lite-latest" if resolved_model != "gemini-flash-lite-latest" else "gemini-flash-latest"
+    if alt_model not in models_to_try:
+        models_to_try.append(alt_model)
 
-    response_text = response.text.strip()
-    analysis_dict = json.loads(response_text)
-    return InsightAnalysis.model_validate(analysis_dict)
+    last_error = None
+    for target_model in models_to_try:
+        try:
+            response = client.models.generate_content(
+                model=target_model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    system_instruction=SYSTEM_PROMPT,
+                    response_mime_type="application/json",
+                    response_schema=InsightAnalysis,
+                    temperature=0.7,
+                )
+            )
+            response_text = response.text.strip()
+            analysis_dict = json.loads(response_text)
+            return InsightAnalysis.model_validate(analysis_dict)
+        except Exception as e:
+            last_error = e
+            if "503" in str(e) or "UNAVAILABLE" in str(e):
+                logger.warning("モデル %s が高負荷(503)のため、フェイルオーバーを試みます: %s", target_model, e)
+                continue
+            raise e
+
+    if last_error:
+        raise last_error
 
 
 def generate_insights(
@@ -191,12 +219,12 @@ def generate_insights(
     gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
 
     if provider_key == "gemini":
-        return generate_insights_with_gemini(data, model_name or "gemini-3.8-flash")
+        return generate_insights_with_gemini(data, model_name)
 
     # auto の場合: Gemini -> Mock
     if gemini_key:
         try:
-            return generate_insights_with_gemini(data, model_name or "gemini-3.8-flash")
+            return generate_insights_with_gemini(data, model_name)
         except Exception as e:
             logger.warning("Gemini APIの呼び出しに失敗しました (%s)。動的モックへフォールバックします。", e)
 
