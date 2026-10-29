@@ -1,0 +1,161 @@
+{
+  "name": "Marketing Ops - Full Marketing Cycle Orchestrator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketing-ops-cycle",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "webhook-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// リクエストの安全な検証・サニタイズ\nconst fs = require('fs');\nconst body = $input.first().json.body || $input.first().json;\n\nconst mode = (body.mode === 'pdca') ? 'pdca' : 'launch';\nconst campaignName = body.campaign_name || 'default_campaign';\nconst safeCampaign = campaignName.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50) || 'campaign';\n\nconst allowedProviders = ['auto', 'gemini', 'mock'];\nconst provider = allowedProviders.includes(body.provider) ? body.provider : 'auto';\n\n// 設定ファイルの書き出し（タイムスタンプ付きで並行競合防止）\nconst timestamp = Date.now();\nconst configPath = `/tmp/config_${safeCampaign}_${timestamp}.json`;\nfs.writeFileSync(configPath, JSON.stringify(body, null, 2), 'utf-8');\n\nreturn [{\n  json: {\n    mode: mode,\n    campaign_name: campaignName,\n    safe_campaign: safeCampaign,\n    config_path: configPath,\n    provider: provider\n  }\n}];"
+      },
+      "name": "Validate & Prepare Config",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "id": "validate-prepare"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.mode}}",
+              "value2": "launch"
+            }
+          ]
+        }
+      },
+      "name": "Check Mode",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        700,
+        300
+      ],
+      "id": "check-mode"
+    },
+    {
+      "parameters": {
+        "command": "=python3 04_orchestrator/scripts/ops.py pipeline --mode launch --config {{$json.config_path}} --output-dir 04_orchestrator/outputs/launch_{{$json.safe_campaign}} --provider {{$json.provider}}"
+      },
+      "name": "Run Launch Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        940,
+        200
+      ],
+      "id": "run-launch"
+    },
+    {
+      "parameters": {
+        "command": "=python3 04_orchestrator/scripts/ops.py pipeline --mode pdca --config {{$json.config_path}} --output-dir 04_orchestrator/outputs/pdca_{{$json.safe_campaign}} --provider {{$json.provider}}"
+      },
+      "name": "Run PDCA Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        940,
+        400
+      ],
+      "id": "run-pdca"
+    },
+    {
+      "parameters": {
+        "channel": "#marketing-ops",
+        "text": "=🚀 【Marketing Ops 完了】モード: {{$node[\"Validate & Prepare Config\"].json.mode}} (案件: {{$node[\"Validate & Prepare Config\"].json.campaign_name}})\n\n成果物が生成されました。サマリーファイルおよびカタログHTMLをご確認ください。"
+      },
+      "name": "Slack Notify",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        300
+      ],
+      "id": "slack-notify"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate & Prepare Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Prepare Config": {
+      "main": [
+        [
+          {
+            "node": "Check Mode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Mode": {
+      "main": [
+        [
+          {
+            "node": "Run Launch Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run PDCA Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run Launch Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Slack Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run PDCA Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Slack Notify",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

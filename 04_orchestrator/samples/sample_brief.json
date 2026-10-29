@@ -1,0 +1,39 @@
+{
+  "campaign_name": "CloudOps AI キャンペーン",
+  "client_name": "株式会社クラウドネクスト",
+  "target_service": "CloudOps AI",
+  "category": "BtoB SaaS / クラウド運用Ops",
+  "target_audience": "情シス部門長、SREエンジニア、IT運用マネージャー",
+  "client_challenges": [
+    "夜間・休日の緊急アラート対応によるエンジニアの疲弊",
+    "マルチクラウド化に伴う運用属人化と管理コストの肥大化",
+    "インフラ障害発生時の原因特定と復旧までのタイムロス"
+  ],
+  "product_features": [
+    "AWS/GCP/Azureのマルチクラウド一元管理",
+    "障害検知から一次切り分け・チケット起票までを完全自律型AIが代行",
+    "エージェントレスで即日連携・導入可能"
+  ],
+  "value_propositions": [
+    "「夜間アラートからチームを解放」する自律型運用Ops",
+    "初月からアラート対応工数を最大70%削減",
+    "月額10万円〜のスモールスタートで確実にROIを実感"
+  ],
+  "budget": "月額200万円（初期提案フェーズ）",
+  "timeline": "3ヶ月集中配信・検証ロードマップ",
+  "kpis": [
+    "月間有効商談獲得数: 40件以上",
+    "目標リード獲得CPA: 18,000円以内",
+    "商談化率: 20%以上"
+  ],
+  "team_structure": "マーケティングソリューション推進本部",
+  "brand_colors": {
+    "primary": "#2563EB",
+    "secondary": "#1E40AF",
+    "accent": "#F59E0B",
+    "background": "#F8FAFC"
+  },
+  "forbidden_words": ["絶対", "100%", "国内No.1"],
+  "tone_and_manner": "プロフェッショナル、信頼感、先進的、明快",
+  "default_provider": "auto"
+}
