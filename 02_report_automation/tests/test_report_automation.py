@@ -19,6 +19,7 @@ for mod in list(sys.modules.keys()):
     if mod == "src" or mod.startswith("src."):
         del sys.modules[mod]
 
+from src import insight_analyzer
 from src.data_processor import DataProcessor, calculate_metrics, _safe_div
 from src.insight_analyzer import generate_mock_insights, generate_insights, generate_insights_with_gemini, resolve_model
 from src.models import AggregatedData, MarketingReport, InsightAnalysis
@@ -256,7 +257,7 @@ def test_gemini_503_failover(monkeypatch, sample_csv_path):
             "GenerateContentConfig": lambda **kwargs: kwargs
         })
 
-    monkeypatch.setattr("src.insight_analyzer.resolve_model", lambda m: "gemini-flash-latest")
+    monkeypatch.setattr(insight_analyzer, "resolve_model", lambda m: "gemini-flash-latest")
     monkeypatch.setenv("GEMINI_API_KEY", "test_key")
     monkeypatch.setitem(sys.modules, "google", type("google", (), {}))
     monkeypatch.setitem(sys.modules, "google.genai", FakeGenAIModule)

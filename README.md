@@ -11,7 +11,7 @@ LLM（Google AI Studio / Gemini、Claude、GPT-4o）やワークフロー自動�
 | :--- | :--- | :---: |
 | **01. 提案スライド自動生成 (`01_proposal_generator`)** | 企画メモから5枚構成のPowerPoint（`.pptx`）スライド自動生成（Gemini無料API対応） | ✅ **実装完了** (v0.2.0) |
 | **02. レポート自動化 (`02_report_automation`)** | 広告実績データの自動集計・要因分析・定例レポート（MD/HTML）出力（Gemini無料API対応） | ✅ **実装完了** (v0.1.0) |
-| **03. クリエイティブ生成パイプライン (`03_creative_pipeline`)** | 広告コピー量産・画像生成API連携・n8nワークフロー | 📋 設計中 / 次期着手 |
+| **03. クリエイティブ生成パイプライン (`03_creative_pipeline`)** | 広告コピー量産・バナー画像合成（Pillow/Imagen 3）・ABテストカタログ・n8nワークフロー | ✅ **実装完了** (v0.1.0) |
 | **開発ワークフロー規約 (`.agents/`)** | 計画書承認・自動テスト・内部レビュー・ウォークスルー規約 | ✅ **運用中** |
 
 ---
@@ -56,8 +56,22 @@ marketing-ops-agent/
 │   ├── tests/
 │   │   └── test_report_automation.py # 自動テストスイート (Pytest 11件)
 │   └── outputs/                   # 生成されたレポート成果物 (.md / .html)
-└── 03_creative_pipeline/          # [Module 3] クリエイティブ生成パイプライン (準備中)
-    └── README.md
+└── 03_creative_pipeline/          # [Module 3] クリエイティブ生成パイプライン (実装完了)
+    ├── README.md                  # モジュール詳細ドキュメント
+    ├── samples/
+    │   └── sample_creative_brief.json # テスト用企画ブリーフ（BtoB SaaS案件想定）
+    ├── src/
+    │   ├── models.py              # Pydanticデータモデル (CreativeBrief, CreativeVariant等)
+    │   ├── copy_generator.py      # Gemini Structured Outputs & 動的モック生成
+    │   ├── image_generator.py     # Pillowバナー合成 & Imagen 3 APIクライアント
+    │   └── catalog_builder.py     # HTMLカタログ & CSV/JSONエクスポート
+    ├── scripts/
+    │   └── generate_creatives.py  # CLI実行エントリーポイント
+    ├── tests/
+    │   └── test_creative_pipeline.py # 自動テストスイート (Pytest 8件)
+    ├── workflows/
+    │   └── creative_generation_n8n.json # n8n 連携ワークフロー定義
+    └── outputs/                   # 生成物保存先（画像, HTML, CSV, JSON）
 ```
 
 ---

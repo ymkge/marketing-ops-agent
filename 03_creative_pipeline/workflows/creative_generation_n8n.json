@@ -1,0 +1,99 @@
+{
+  "name": "Marketing Ops - Creative Generation & Review Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-creative",
+        "options": {}
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ],
+      "id": "webhook-trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "// リクエストボディの厳格な検証・サニタイズ（OSコマンドインジェクション防止）\nconst fs = require('fs');\nconst body = $input.first().json.body || $input.first().json;\n\nif (!body.product_name || typeof body.product_name !== 'string') {\n  throw new Error('product_name is required and must be a string');\n}\n\n// 安全なスラグへの正規化（英数字・アンダースコア・ハイフンのみ許可）\nconst safeSlug = body.product_name.replace(/[^a-zA-Z0-9_-]/g, '_').substring(0, 50) || 'campaign';\n\n// プロバイダー・数値パラメータのホワイトリスト検証\nconst allowedProviders = ['auto', 'gemini', 'mock'];\nconst provider = allowedProviders.includes(body.provider) ? body.provider : 'auto';\nconst variantsCount = Math.min(Math.max(parseInt(body.variants) || 3, 1), 5);\n\n// 一時ブリーフファイルの安全な書き出し\nconst briefFilePath = `/tmp/brief_${safeSlug}.json`;\nfs.writeFileSync(briefFilePath, JSON.stringify(body, null, 2), 'utf-8');\n\nreturn [{\n  json: {\n    product_name: body.product_name,\n    safe_slug: safeSlug,\n    brief_path: briefFilePath,\n    variants_count: variantsCount,\n    provider: provider\n  }\n}];"
+      },
+      "name": "Validate & Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ],
+      "id": "validate-payload"
+    },
+    {
+      "parameters": {
+        "command": "=python3 03_creative_pipeline/scripts/generate_creatives.py --input {{$json.brief_path}} --output-dir 03_creative_pipeline/outputs/campaign_{{$json.safe_slug}} --variants {{$json.variants_count}} --provider {{$json.provider}}"
+      },
+      "name": "Execute Creative Pipeline CLI",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        720,
+        300
+      ],
+      "id": "execute-cli"
+    },
+    {
+      "parameters": {
+        "channel": "#marketing-review",
+        "text": "=🎨 【クリエイティブ生成完了】{{$json.product_name}} のABテストバリエーションが生成されました。\n\n・生成バリエーション: {{$json.variants_count}} パターン\n・カタログHTML: 03_creative_pipeline/outputs/campaign_{{$json.safe_slug}}/creative_catalog.html\n\nSlackまたはカタログブラウザからご確認・承認をお願いします！"
+      },
+      "name": "Slack Notification",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ],
+      "id": "slack-notification"
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate & Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Normalize": {
+      "main": [
+        [
+          {
+            "node": "Execute Creative Pipeline CLI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Creative Pipeline CLI": {
+      "main": [
+        [
+          {
+            "node": "Slack Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
