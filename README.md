@@ -1,19 +1,48 @@
 # Marketing Ops Agent (マーケティング業務自動化・コンテンツ運用改善 AIエージェント)
 
 マーケティング業務の効率化・自動化およびコンテンツ運用の改善を支援するAIエージェント開発リポジトリ（モノレポ）です。  
-LLM（Google AI Studio / Gemini、Claude、GPT-4o）やワークフロー自動化（n8n）、データ処理・ドキュメント自動生成ライブラリを活用し、**提案書作成**・**データレポーティング**・**クリエイティブ制作**の一連のプロセスを自動化・高度化します。
+LLM（Google AI Studio / Gemini、Claude、GPT-4o）やワークフロー自動化（n8n）、データ処理・ドキュメント自動生成ライブラリを活用し、**提案書作成**・**データレポーティング**・**クリエイティブ制作**・**運用PDCAループ**の一連のプロセスを自動化・高度化します。
 
 ---
 
 ## 🚦 開発ステータス & ロードマップ
 
+全4大主要テーマのモジュール実装・自動テスト・内部レビューが完了し、`main` ブランチに統合されています。
+
 | モジュール / テーマ | 概要 | ステータス |
 | :--- | :--- | :---: |
-| **01. 提案スライド自動生成 (`01_proposal_generator`)** | 企画メモから5枚構成のPowerPoint（`.pptx`）スライド自動生成（Gemini無料API対応） | ✅ **実装完了** (v0.2.0) |
-| **02. レポート自動化 (`02_report_automation`)** | 広告実績データの自動集計・要因分析・定例レポート（MD/HTML）出力（Gemini無料API対応） | ✅ **実装完了** (v0.1.0) |
-| **03. クリエイティブ生成パイプライン (`03_creative_pipeline`)** | 広告コピー量産・バナー画像合成（Pillow/Imagen 3）・ABテストカタログ・n8nワークフロー | ✅ **実装完了** (v0.1.0) |
-| **04. 統合運用オーケストレーター (`04_orchestrator`)** | 新規案件一括立ち上げ・PDCA改善クリエイティブ再生成・統合CLI (`ops.py`) | ✅ **実装完了** (v0.1.0) |
-| **開発ワークフロー規約 (`.agents/`)** | 計画書承認・自動テスト・内部レビュー・ウォークスルー規約 | ✅ **運用中** |
+| **[01. 提案スライド自動生成](01_proposal_generator/README.md) (`01_proposal_generator`)** | 企画メモから5枚構成のPowerPoint（`.pptx`）スライド自動生成（Gemini無料API対応） | ✅ **実装完了** (v0.2.0) |
+| **[02. レポート自動化](02_report_automation/README.md) (`02_report_automation`)** | 広告実績データの自動集計・要因分析・定例レポート（MD/HTML）出力（Gemini無料API対応） | ✅ **実装完了** (v0.1.0) |
+| **[03. クリエイティブ生成パイプライン](03_creative_pipeline/README.md) (`03_creative_pipeline`)** | 広告コピー量産・バナー画像合成（Pillow/Imagen 3）・ABテストカタログ・n8nワークフロー | ✅ **実装完了** (v0.1.0) |
+| **[04. 統合運用オーケストレーター](04_orchestrator/README.md) (`04_orchestrator`)** | 新規案件一括立ち上げ・PDCA改善クリエイティブ再生成・統合CLI (`ops.py`) | ✅ **実装完了** (v0.1.0) |
+| **[開発ワークフロー規約](.agents/rules/development_workflow.md) (`.agents/`)** | 計画書承認・自動テスト・内部レビュー・ウォークスルー規約 | ✅ **運用中** |
+
+---
+
+## 🚀 クイックスタート: 最速で動かす
+
+> 💡 **初回セットアップ**: 先に [🛠️ 環境構築手順](#%EF%B8%8F-環境構築手順) を完了してください。APIキー未設定時でも、自動的に高品質モックで即座に動作します。
+
+統合CLI（`ops.py`）を使用することで、ワンコマンドで実務パイプラインを実行できます。
+
+### 1. 新規案件の一括立ち上げ（提案スライド + 初期クリエイティブ群）
+```bash
+python 04_orchestrator/scripts/ops.py pipeline --mode launch --output-dir 04_orchestrator/outputs/sample_launch
+```
+👉 `04_orchestrator/outputs/sample_launch/` に以下が即時生成されます：
+- 提案書スライド: `CloudOps AI キャンペーン_proposal.pptx`
+- クリエイティブHTMLカタログ: `creatives/creative_catalog.html`
+- バナー画像素材: `creatives/*.png` (1:1, 1.91:1)
+- 広告コピー一覧: `creatives/creative_copies.csv`
+
+### 2. PDCA運用改善（実績レポーティング + 課題テコ入れクリエイティブ再生成）
+```bash
+python 04_orchestrator/scripts/ops.py pipeline --mode pdca --output-dir 04_orchestrator/outputs/sample_pdca
+```
+👉 `04_orchestrator/outputs/sample_pdca/` に以下が即時生成されます：
+- 定例広告配信レポート: `performance_report.html`, `performance_report.md`
+- 課題テコ入れ改善用クリエイティブカタログ: `remedial_creatives/creative_catalog.html`
+- 改善バナー画像素材: `remedial_creatives/*.png`
 
 ---
 
@@ -23,73 +52,39 @@ LLM（Google AI Studio / Gemini、Claude、GPT-4o）やワークフロー自動�
 marketing-ops-agent/
 ├── README.md                      # プロジェクト全体ドキュメント（本ファイル）
 ├── .gitignore                     # Git除外設定 (Python, Node, .env, outputs/, tmp/)
-├── .env.example                   # 環境変数テンプレート (LLM APIキー, n8n設定等)
+├── .env.example                   # 環境変数テンプレート (LLM APIキー, モデル設定等)
 ├── requirements.txt               # Python共通依存パッケージ一覧
 ├── docker-compose.yml             # ローカル用 n8n 実行用 Docker Compose 設定
 ├── .agents/                       # AIエージェント開発規約・ワークフロー定義
 │   ├── AGENTS.md                  # エージェント基本行動ルール
 │   └── rules/
 │       └── development_workflow.md # 開発・修正プロセスの厳格ルール
-├── 01_proposal_generator/         # [Module 1] 提案スライド自動生成 (実装完了)
+├── 01_proposal_generator/         # [Module 1] 提案スライド自動生成
 │   ├── README.md                  # モジュール詳細ドキュメント
-│   ├── samples/
-│   │   └── sample_brief.json      # テスト用企画ブリーフ（BtoB SaaS案件想定）
-│   ├── src/
-│   │   ├── models.py              # Pydanticデータモデル (BriefInput, ProposalDeck等)
-│   │   ├── llm_client.py          # LLM連携 (Gemini / Anthropic / OpenAI / Mock)
-│   │   └── pptx_builder.py        # python-pptx 描画ビルダー (16:9 カードレイアウト)
-│   ├── scripts/
-│   │   └── generate_slides.py     # CLI実行エントリーポイント
-│   ├── tests/
-│   │   └── test_proposal_generator.py # 自動テストスイート (Pytest 9件)
-│   └── outputs/                   # 生成されたスライド成果物 (.pptx)
-├── 02_report_automation/          # [Module 2] レポート自動化 (実装完了)
+│   ├── samples/                   # テスト用企画ブリーフ（JSON）
+│   ├── src/                       # Pydanticモデル, Gemini連携, pptx_builder
+│   ├── scripts/generate_slides.py # 単体CLIエントリーポイント
+│   └── tests/                     # 自動テストスイート (9件)
+├── 02_report_automation/          # [Module 2] レポート自動化
 │   ├── README.md                  # モジュール詳細ドキュメント
-│   ├── samples/
-│   │   └── sample_ad_performance.csv # テスト用配信実績データ (Google/Meta等)
-│   ├── src/
-│   │   ├── models.py              # Pydanticデータモデル (AggregatedData, InsightAnalysis等)
-│   │   ├── data_processor.py      # pandas加重平均集計・ゼロ除算ガード
-│   │   ├── insight_analyzer.py    # Gemini API Structured Outputs分析・動的モック
-│   │   └── report_builder.py      # Markdown & 自己完結型HTML出力ビルダー
-│   ├── scripts/
-│   │   └── generate_report.py     # CLI実行エントリーポイント
-│   ├── tests/
-│   │   └── test_report_automation.py # 自動テストスイート (Pytest 11件)
-│   └── outputs/                   # 生成されたレポート成果物 (.md / .html)
-├── 03_creative_pipeline/          # [Module 3] クリエイティブ生成パイプライン (実装完了)
+│   ├── samples/                   # 広告配信実績データ (CSV)
+│   ├── src/                       # 加重平均プロセッサ, Geminiインサイト分析, report_builder
+│   ├── scripts/generate_report.py # 単体CLIエントリーポイント
+│   └── tests/                     # 自動テストスイート (13件)
+├── 03_creative_pipeline/          # [Module 3] クリエイティブ生成パイプライン
 │   ├── README.md                  # モジュール詳細ドキュメント
-│   ├── samples/
-│   │   └── sample_creative_brief.json # テスト用企画ブリーフ（BtoB SaaS案件想定）
-│   ├── src/
-│   │   ├── models.py              # Pydanticデータモデル (CreativeBrief, CreativeVariant等)
-│   │   ├── copy_generator.py      # Gemini Structured Outputs & 動的モック生成
-│   │   ├── image_generator.py     # Pillowバナー合成 & Imagen 3 APIクライアント
-│   │   └── catalog_builder.py     # HTMLカタログ & CSV/JSONエクスポート
-│   ├── scripts/
-│   │   └── generate_creatives.py  # CLI実行エントリーポイント
-│   ├── tests/
-│   │   └── test_creative_pipeline.py # 自動テストスイート (Pytest 8件)
-│   ├── workflows/
-│   │   └── creative_generation_n8n.json # n8n 連携ワークフロー定義
-│   └── outputs/                   # 生成物保存先（画像, HTML, CSV, JSON）
-└── 04_orchestrator/               # [Module 4] 統合運用オーケストレーター (実装完了)
+│   ├── samples/                   # クリエイティブブリーフ (JSON)
+│   ├── src/                       # コピー生成, Pillowバナー合成, カタログビルダー
+│   ├── scripts/generate_creatives.py # 単体CLIエントリーポイント
+│   ├── workflows/                 # n8n 連携ワークフロー定義 (JSON)
+│   └── tests/                     # 自動テストスイート (8件)
+└── 04_orchestrator/               # [Module 4] 統合運用オーケストレーター
     ├── README.md                  # モジュール詳細ドキュメント
-    ├── samples/
-    │   ├── sample_campaign_config.yaml # 統合案件設定ファイル
-    │   └── sample_brief.json      # 共通企画ブリーフ (JSON)
-    ├── src/
-    │   ├── config.py              # 設定ローダー & データ変換
-    │   ├── launcher_pipeline.py   # 新規立ち上げ一括連携
-    │   ├── pdca_pipeline.py       # PDCA改善一括連携
-    │   └── cli.py                 # 統合CLIディスパッチャー
-    ├── scripts/
-    │   └── ops.py                 # 統合CLI実行エントリーポイント
-    ├── tests/
-    │   └── test_orchestrator.py   # 自動テストスイート (Pytest 4件)
-    ├── workflows/
-    │   └── full_marketing_cycle_n8n.json # 全体統合 n8n ワークフロー定義
-    └── outputs/                   # パイプライン実行成果物保存先
+    ├── samples/                   # 統合案件設定ファイル (YAML/JSON)
+    ├── src/                       # 設定ローダー, launchパイプライン, pdcaパイプライン, 統合CLI
+    ├── scripts/ops.py             # 統合CLI実行エントリーポイント
+    ├── workflows/                 # 全体統合 n8n ワークフロー定義 (JSON)
+    └── tests/                     # 自動テストスイート (4件)
 ```
 
 ---
@@ -98,11 +93,11 @@ marketing-ops-agent/
 
 ### 前提条件
 - **Python**: 3.10 以上 (Python 3.12 推奨)
-- **Docker / Docker Compose**: n8n のローカル実行に利用
+- **Docker / Docker Compose**: n8n のローカル実行に利用（任意）
 
 ### 1. リポジトリのクローン・準備
 ```bash
-git clone <repository-url>
+git clone https://github.com/ymkge/marketing-ops-agent.git
 cd marketing-ops-agent
 ```
 
@@ -114,8 +109,10 @@ cp .env.example .env
 Google AI Studio の無料APIキーを利用する場合:
 ```bash
 export GEMINI_API_KEY="your-gemini-api-key"
+# 推奨汎用最新モデルエイリアス（デフォルト: gemini-flash-latest）
+export GEMINI_MODEL="gemini-flash-latest"
 ```
-※ APIキーが未設定の場合でも、自動的に高品質モックへフォールバックしてローカル動作確認が可能です。
+※ APIキーが未設定の場合でも、自動的に動的モック・完全ローカル画像合成（Pillow）へフォールバックして動作確認が可能です。
 
 ### 3. Python 仮想環境の構築 & パッケージ導入
 ```bash
@@ -139,80 +136,71 @@ docker compose up -d
 
 ---
 
-## 🎯 実装済みモジュール紹介: `01_proposal_generator`
+## 🎯 各モジュールの詳細と実行方法
 
-クライアントの課題やヒアリング情報（企画メモ・ブリーフ）をもとに、LLMが5枚構成のスライド骨子を構造化データとして策定し、`python-pptx` を用いて 16:9 ワイド画面の PowerPoint スライドを自動生成します。
+### 1. 提案スライド自動生成 ([01_proposal_generator](01_proposal_generator/README.md))
+クライアントの課題やヒアリング情報（企画メモ・ブリーフ）をもとに、LLMが5枚構成のスライド骨子を策定し、`python-pptx` を用いて 16:9 ワイド画面の PowerPoint スライドを自動生成します。
 
-### スライド構成（全5枚）
-1. **`01. 表紙 (cover)`**: プロジェクト名、サブタイトル、クライアント名、提案者、日付、Confidential表記
-2. **`02. 課題認識 (challenges)`**: 現状課題、根本要因、アプローチ方針の3カラムカード
-3. **`03. ターゲット・訴求設計 (target_strategy)`**: ペルソナ定義、商材の差別化バリュー、クリエイティブ訴求軸
-4. **`04. 配信シミュレーション (simulation)`**: 予算アロケーション、目標KPI試算、運用PDCA方針
-5. **`05. スケジュール・体制 (schedule_team)`**: 12週ロードマップ、推進体制、定例報告スキーム
+- **構成**: 表紙、課題認識（3カラム）、ターゲット・訴求設計、配信シミュレーション、スケジュール・体制
+- **単体実行**:
+  ```bash
+  python 01_proposal_generator/scripts/generate_slides.py \
+    --input 01_proposal_generator/samples/sample_brief.json \
+    --output 01_proposal_generator/outputs/sample_proposal.pptx
+  ```
 
-### 主な特長
-- **Google AI Studio (Gemini) 対応**: 無料で利用可能な Gemini API (`gemini-2.0-flash` 等) による高速かつ高精度なスライド構造化出力（Structured Outputs）を標準サポート。
-- **重なり防止・動的文字調整**: 座標と高さを分離計算したカード型レイアウト。文字数や箇条書きの行数に応じた自動フォントサイズ縮小・余白調整機能を備え、テキストボックス同士の重なりや文字溢れを防止。
-- **高耐障害性フォールバック**: APIキー未設定時やネットワーク障害時でも、高品質なルールベースモック生成へ自動フォールバック。
+### 2. レポート自動化 ([02_report_automation](02_report_automation/README.md))
+広告媒体（Google広告、Meta広告等）の配信実績データ（CSV）を加重平均集計し、Gemini API による要因分析・改善インサイトを付与した定例レポート（Markdown / 自己完結型HTML）を自動出力します。
 
-### 実行方法
+- **特長**: 単純平均を排した正確な加重平均集計、Gemini 503混雑時の自動フェイルオーバー、XSS完全エスケープ
+- **単体実行**:
+  ```bash
+  python 02_report_automation/scripts/generate_report.py \
+    --input 02_report_automation/samples/sample_ad_performance.csv \
+    --output 02_report_automation/outputs/weekly_report
+  ```
 
-```bash
-# 基本実行 (Gemini APIキーがあれば自動利用、なければモックへフォールバック)
-python 01_proposal_generator/scripts/generate_slides.py \
-  --input 01_proposal_generator/samples/sample_brief.json \
-  --output 01_proposal_generator/outputs/sample_proposal.pptx
+### 3. クリエイティブ生成パイプライン ([03_creative_pipeline](03_creative_pipeline/README.md))
+商材ブリーフから、媒体別コピー量産（Google RSA / Meta / X）、AI画像プロンプト最適化、Pillowによるバナー画像合成（1:1, 1.91:1, 9:16）、ABテスト比較用HTMLカタログを出力します。
 
-# Gemini API を明示指定して実行
-python 01_proposal_generator/scripts/generate_slides.py \
-  --input 01_proposal_generator/samples/sample_brief.json \
-  --output 01_proposal_generator/outputs/sample_proposal.pptx \
-  --provider gemini \
-  --model gemini-flash-latest
-```
+- **特長**: 各媒体の文字数制限を厳格に管理、禁止キーワード自動サニタイズ、Excel数式インジェクション防止
+- **単体実行**:
+  ```bash
+  python 03_creative_pipeline/scripts/generate_creatives.py \
+    --input 03_creative_pipeline/samples/sample_creative_brief.json \
+    --output-dir 03_creative_pipeline/outputs/sample_campaign
+  ```
 
----
+### 4. 統合運用オーケストレーター ([04_orchestrator](04_orchestrator/README.md))
+単体モジュール群を束ね、共通設定ファイル（`marketing_ops.yaml`）から新規立ち上げパイプライン（スライド+初期クリエイティブ一式）や、PDCA運用改善パイプライン（レポート+改善クリエイティブ再生成）を一気通貫で実行します。
 
-## 🎯 実装済みモジュール紹介: `02_report_automation`
+- **統合CLIショートカット**:
+  ```bash
+  # 統合パイプラインの実行
+  python 04_orchestrator/scripts/ops.py pipeline --mode launch --output-dir 04_orchestrator/outputs/sample_launch
+  python 04_orchestrator/scripts/ops.py pipeline --mode pdca --output-dir 04_orchestrator/outputs/sample_pdca
 
-広告媒体（Google広告、Meta広告等）の配信実績データ（CSV/JSON）を集計・クレンジングし、Gemini API による要因分析・改善インサイトを付与した定例レポート（Markdown / 自己完結型HTML）を自動出力します。
-
-### 主な特長
-- **加重平均による決定論的KPI集計**: 単純平均ではなく合算後の除算（$\sum \text{clicks} / \sum \text{imp}$ 等）で正確な数値を算出。ゼロ除算・欠損値も完全保護。
-- **Gemini Structured Outputs によるインサイト生成**: 全体総括、媒体別評価（good/warning/neutral）、顕著な傾向、優先度付きネクストアクションを構造化して出力。
-- **実務で使える2系統レポート出力**:
-  - `Markdown`: チャット・社内wiki共有用
-  - `HTML`: インラインCSS、KPIカード、CSS横棒グラフ、印刷/PDF保存対応のダッシュボード画面
-
-### 実行方法
-
-```bash
-# 基本実行 (Markdown & HTML の両方を出力)
-python 02_report_automation/scripts/generate_report.py \
-  --input 02_report_automation/samples/sample_ad_performance.csv \
-  --output 02_report_automation/outputs/weekly_report
-
-# Gemini API を明示指定して実行
-python 02_report_automation/scripts/generate_report.py \
-  --input 02_report_automation/samples/sample_ad_performance.csv \
-  --output 02_report_automation/outputs/weekly_report \
-  --provider gemini \
-  --model gemini-flash-latest
-```
+  # 各モジュールの単体呼び出し
+  python 04_orchestrator/scripts/ops.py proposal
+  python 04_orchestrator/scripts/ops.py report
+  python 04_orchestrator/scripts/ops.py creative
+  ```
 
 ---
 
 ## 🧪 自動テストの実行
 
-本プロジェクトではデグレ防止のため、各モジュールのユニットテストおよびCLIエンドツーエンドテストを整備しています（全20テスト合格）。
+本プロジェクトではデグレ防止と品質保証のため、全モジュールにユニットテストおよびCLIエンドツーエンドテストを整備しています（**全34テスト完全合格**）。
 
 ```bash
 # 全モジュールの自動テストを一括実行
-pytest 01_proposal_generator/tests/ 02_report_automation/tests/ -v
+pytest -v
 
 # モジュール個別実行
 pytest 01_proposal_generator/tests/ -v
 pytest 02_report_automation/tests/ -v
+pytest 03_creative_pipeline/tests/ -v
+pytest 04_orchestrator/tests/ -v
 ```
 
 ---
@@ -226,6 +214,6 @@ pytest 02_report_automation/tests/ -v
 2. **機能実装 & 自動テスト（デグレ検証）**:
    - 実装と並行してテストを作成し、全テスト合格を確認する。
 3. **サブエージェントによる内部レビュー & ブラッシュアップ**:
-   - レビュー担当サブエージェントを召喚し、堅牢性・保守性・レイアウト等の観点からコードを改善する。
+   - レビュー担当サブエージェントを召喚し、堅牢性・セキュリティ・保守性の観点からコードを改善する。
 4. **ウォークスルーの作成・報告**:
    - 検証ログ・成果物・手順をまとめたレポートを提出する。
